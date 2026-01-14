@@ -1,26 +1,30 @@
 package services
 
 import (
-	"OrderSystemHighConcurrency/order-processor/internal/contracts"
-	"OrderSystemHighConcurrency/shared/models"
 	"context"
 	"errors"
+
+	"OrderSystemHighConcurrency/order-processor/internal/contracts"
+	"OrderSystemHighConcurrency/shared/models"
 )
 
-// processorService implements OrderProcessor
+// processorService implements contracts.OrderProcessor
 type processorService struct {
-	batchService contracts.Repository
-	retryService *RetryService
+	batchService contracts.BatchService
+	retryService contracts.RetryService
+	dlq          contracts.DLQPublisher
 }
 
-// NewOrderProcessor creates a new OrderProcessor service
+// NewOrderProcessor creates OrderProcessor
 func NewOrderProcessor(
-	repo contracts.Repository,
+	batchService contracts.BatchService,
+	retryService contracts.RetryService,
 	dlq contracts.DLQPublisher,
 ) contracts.OrderProcessor {
 	return &processorService{
-		batchService: repo,
-		retryService: NewRetryService(dlq),
+		batchService: batchService,
+		retryService: retryService,
+		dlq:          dlq,
 	}
 }
 
@@ -32,10 +36,20 @@ func (p *processorService) Process(ctx context.Context, order *models.Order) err
 
 	order.Status = models.OrderStatusProcessing
 
-	// Add order to batch
-	err := p.batchService.SaveBatch(ctx, []*models.Order{order})
+	// Try batching
+	err := p.batchService.Add(ctx, order)
 	if err != nil {
-		return p.retryService.HandleFailure(ctx, order, err)
+		// Increment retry count
+		order.RetryCount++
+
+		// Check if max retries reached
+		if !p.retryService.ShouldRetry(order.RetryCount) {
+			// Send to DLQ
+			return p.dlq.Publish(ctx, order, err.Error())
+		}
+
+		// Return error to retry later
+		return err
 	}
 
 	order.Status = models.OrderStatusCompleted

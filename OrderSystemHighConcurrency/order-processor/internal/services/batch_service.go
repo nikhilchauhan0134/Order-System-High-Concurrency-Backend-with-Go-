@@ -36,14 +36,13 @@ func (b *BatchService) Add(ctx context.Context, order *models.Order) error {
 	b.buffer = append(b.buffer, order)
 
 	if len(b.buffer) >= b.batchSize {
-		return b.flush(ctx)
+		return b.Flush(ctx)
 	}
-
 	return nil
 }
 
-// flush writes batch to repository
-func (b *BatchService) flush(ctx context.Context) error {
+// Flush writes batch to repository
+func (b *BatchService) Flush(ctx context.Context) error {
 	if len(b.buffer) == 0 {
 		return nil
 	}
