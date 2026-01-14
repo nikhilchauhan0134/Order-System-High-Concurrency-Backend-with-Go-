@@ -1,8 +1,12 @@
 package main
 
 import (
+	"OrderSystemHighConcurrency/order-api/internal/config"
+	"OrderSystemHighConcurrency/order-api/internal/handlers"
 	"OrderSystemHighConcurrency/order-api/internal/infrastructure/kafka"
+	"OrderSystemHighConcurrency/order-api/internal/infrastructure/ratelimit"
 	"OrderSystemHighConcurrency/order-api/internal/services"
+
 	"context"
 	"log"
 	"net/http"
@@ -16,47 +20,50 @@ import (
 
 func main() {
 	// ------------------------------------------------
-	// 1️ Load configuration (env-based)
+	// 1️⃣ Load configuration (env-based)
 	// ------------------------------------------------
-	kafkaBrokers := []string{"localhost:9092"}
-	kafkaTopic := "orders"
-
-	httpAddr := ":8080"
-	http.Handle("/metrics", promhttp.Handler())
+	cfg := config.LoadConfig()
+	kafkaBrokers := cfg.KafkaBrokers
+	kafkaTopic := cfg.KafkaTopic
 
 	// ------------------------------------------------
-	// 2 Initialize Kafka Producer
+	// 2️⃣ Initialize Kafka Producer
 	// ------------------------------------------------
 	producer, err := kafka.NewKafkaProducer(kafkaBrokers, kafkaTopic)
 	if err != nil {
-		log.Fatalf("failed to init kafka producer: %v", err)
+		log.Fatalf("failed to init Kafka producer: %v", err)
 	}
+	defer producer.Close() // close producer on shutdown
 
 	// ------------------------------------------------
-	// 3️ Initialize Order Service
+	// 3️⃣ Initialize Order Service
 	// ------------------------------------------------
 	orderService := services.NewOrderService(producer)
 
 	// ------------------------------------------------
-	// 4️ Initialize HTTP Handler
+	// 4️⃣ Initialize HTTP Handler
 	// ------------------------------------------------
 	orderHandler := handlers.NewOrderHandler(orderService)
 
 	// ------------------------------------------------
-	// 5️ Rate Limiter Middleware
+	// 5️⃣ Rate Limiter Middleware
 	// ------------------------------------------------
 	rateLimiter := ratelimit.NewIPRateLimiter(100, time.Minute)
 
 	mux := http.NewServeMux()
 	mux.Handle("/orders", rateLimiter.Middleware(orderHandler))
+	mux.Handle("/metrics", promhttp.Handler())
 
+	// ------------------------------------------------
+	// 6️⃣ HTTP Server
+	// ------------------------------------------------
 	server := &http.Server{
-		Addr:    httpAddr,
+		Addr:    ":8080",
 		Handler: mux,
 	}
 
 	// ------------------------------------------------
-	// 6️ Graceful Shutdown
+	// 7️⃣ Graceful Shutdown
 	// ------------------------------------------------
 	ctx, stop := signal.NotifyContext(
 		context.Background(),
@@ -66,13 +73,13 @@ func main() {
 	defer stop()
 
 	go func() {
-		log.Printf("Order API running on %s", httpAddr)
+		log.Printf("Order API running on %s", server.Addr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("http server error: %v", err)
+			log.Fatalf("HTTP server error: %v", err)
 		}
 	}()
 
-	<-ctx.Done() // wait for signal
+	<-ctx.Done() // wait for termination signal
 	log.Println("shutting down order-api...")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -80,7 +87,7 @@ func main() {
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Printf("graceful shutdown failed: %v", err)
+	} else {
+		log.Println("order-api stopped cleanly")
 	}
-
-	log.Println("order-api stopped cleanly")
 }

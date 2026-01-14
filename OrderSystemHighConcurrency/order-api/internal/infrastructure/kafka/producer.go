@@ -66,3 +66,10 @@ func (k *kafkaProducer) Publish(ctx context.Context, order *models.Order) error 
 		return err
 	}
 }
+
+func (p *kafkaProducer) Close() error {
+	if p.producer != nil {
+		return p.producer.Close()
+	}
+	return nil
+}
