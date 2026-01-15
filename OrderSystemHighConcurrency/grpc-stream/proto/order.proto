@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package grpcstream;
+
+import "google/protobuf/timestamp.proto";
+// VERY IMPORTANT
+option go_package = "OrderSystemHighConcurrency/grpc-stream/internal/pb";
+
+
+service OrderStream {
+  rpc StreamOrders(stream Order) returns (stream StreamResponse);
+}
+
+
+message Order {
+  string id = 1;
+  double amount = 2;
+  string customer_id = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+message StreamResponse {
+  string status = 1;
+}

@@ -3,7 +3,8 @@ package main
 import (
 	"OrderSystemHighConcurrency/order-api/internal/config"
 	"OrderSystemHighConcurrency/order-api/internal/handlers"
-	"OrderSystemHighConcurrency/order-api/internal/infrastructure/kafka"
+	"OrderSystemHighConcurrency/shared/kafka"
+
 	"OrderSystemHighConcurrency/order-api/internal/infrastructure/ratelimit"
 	"OrderSystemHighConcurrency/order-api/internal/services"
 

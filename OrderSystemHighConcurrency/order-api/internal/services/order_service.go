@@ -2,21 +2,20 @@ package services
 
 import (
 	"OrderSystemHighConcurrency/order-api/internal/contracts"
+	sharedkafa "OrderSystemHighConcurrency/shared/contracts"
 	"OrderSystemHighConcurrency/shared/models"
 	"context"
 	"errors"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // orderService implements OrderService contract
 type orderService struct {
-	producer contracts.Producer
+	producer sharedkafa.Producer
 }
 
 // NewOrderService creates a new OrderService
-func NewOrderService(producer contracts.Producer) contracts.OrderService {
+func NewOrderService(producer sharedkafa.Producer) contracts.OrderService {
 	return &orderService{
 		producer: producer,
 	}
@@ -30,7 +29,7 @@ func (s *orderService) CreateOrder(ctx context.Context, order *models.Order) err
 
 	// Generate OrderID if not present (idempotency support)
 	if order.OrderID == "" {
-		order.OrderID = uuid.NewString()
+		return errors.New("amount must be greater than zero")
 	}
 
 	// Basic validation
