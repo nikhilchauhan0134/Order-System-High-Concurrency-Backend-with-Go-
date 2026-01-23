@@ -7,5 +7,5 @@ import (
 
 type BatchService interface {
 	Add(ctx context.Context, order *models.Order) error
-	flush(ctx context.Context) error
+	Flush(ctx context.Context) error
 }

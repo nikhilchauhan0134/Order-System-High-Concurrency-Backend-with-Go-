@@ -1,0 +1,63 @@
+version: '3.8'
+
+networks:
+  app-tier:
+    driver: bridge
+
+volumes:
+  kafka_data:
+    driver: local
+  kafka_logs:
+    driver: local
+
+services:
+  kafka:
+    image: bitnami/kafka:latest   # valid tag that exists
+    container_name: OrderSystemHighConcurrency_kafka
+    networks:
+      - app-tier
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    volumes:
+      - kafka_data:/bitnami/kafka
+      - kafka_logs:/tmp/kafka_mounts/logs
+
+  order-api:
+    build:
+      context: ./order-api
+      dockerfile: Dockerfile
+    container_name: OrderSystemHighConcurrency_orderapi
+    networks:
+      - app-tier
+    depends_on:
+      - kafka
+
+  order-processor:
+    build:
+      context: ./order-processor
+      dockerfile: Dockerfile
+    container_name: OrderSystemHighConcurrency_orderprocessor
+    networks:
+      - app-tier
+    depends_on:
+      - kafka
+
+  grpc-stream:
+    build:
+      context: ./grpc-stream
+      dockerfile: Dockerfile
+    container_name: OrderSystemHighConcurrency_grpcstream
+    networks:
+      - app-tier
+    depends_on:
+      - kafka

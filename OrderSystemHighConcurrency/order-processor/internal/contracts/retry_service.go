@@ -1,5 +1,5 @@
 package contracts
 
 type RetryService interface {
-	ShouldRetry(key any) bool
+	ShouldRetry(attempt int) bool
 }

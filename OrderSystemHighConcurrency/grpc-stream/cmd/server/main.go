@@ -32,7 +32,7 @@ func (s *server) StreamOrders(stream pb.OrderStream_StreamOrdersServer) error {
 			OrderID:   orderProto.Id,
 			Amount:    orderProto.Amount,
 			UserID:    orderProto.CustomerId,
-			CreatedAt: orderProto.CreatedAt,
+			CreatedAt: orderProto.CreatedAt.AsTime(),
 		}
 
 		_ = s.streamService.PublishOrder(context.Background(), order)

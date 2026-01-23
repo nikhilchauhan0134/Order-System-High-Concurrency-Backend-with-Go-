@@ -29,13 +29,13 @@ func main() {
 
 	// ------------------------------------------------
 	// 2️⃣ Initialize Kafka Producer
-	// ------------------------------------------------
+
 	producer, err := kafka.NewKafkaProducer(kafkaBrokers, kafkaTopic)
 	if err != nil {
-		log.Fatalf("failed to init Kafka producer: %v", err)
+		log.Println("Kafka not available, continuing for debug:", err)
 	}
 	defer producer.Close() // close producer on shutdown
-
+	// ------------------------------------------------
 	// ------------------------------------------------
 	// 3️⃣ Initialize Order Service
 	// ------------------------------------------------

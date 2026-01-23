@@ -18,6 +18,7 @@ type Config struct {
 	// Rate Limiter
 	RateLimitRequests int           // requests
 	RateLimitInterval time.Duration // per interval
+
 }
 
 // LoadConfig loads configuration from environment variables or defaults
